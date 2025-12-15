@@ -58,7 +58,7 @@ def get_ebay_images(item_id):
                         high_res = re.sub(r's-l\d+', 's-l1600', high_res)
                         image_urls.append(high_res)
                         
-        return image_urls[:7] # Limit to first 7 images
+        return image_urls[:6] # Limit to first 7 images
 
     except Exception as e:
         st.error(f"Error scraping images: {e}")
