@@ -11619,21 +11619,28 @@
         }
 
         /*gallery*/
+/* --- MAIN GALLERY WRAPPER --- */
         .gallery {
             width: 100%;
             margin: 10px auto;
             text-align: center;
             position: relative;
-
         }
 
+        /* --- MAIN IMAGE BOX --- */
         .product-image-box {
             position: relative;
-            border-radius: 10px;
+            border-radius: 20px;
             border: none;
             padding: 10px;
         }
 
+        /* Hide the radio inputs */
+        .product-image-box input {
+            display: none;
+        }
+
+        /* --- MAIN IMAGE DISPLAY AREA --- */
         .product-image-container {
             height: 420px;
             background: none;
@@ -11642,55 +11649,83 @@
             text-align: center;
             margin: 0 auto;
             padding: 10px;
+            display: none; /* Hidden by default */
         }
 
         .product-image-container img {
             max-width: 100%;
             max-height: 100%;
-
+            box-sizing: border-box; /* Ensures border doesn't resize image */
         }
 
-        .product-image-container {
-            display: none;
-        }
-
-        .product-image-box input {
-            display: none;
-        }
-
-        .product-image-box label:hover {
-            cursor: pointer;
-        }
-
-#gal1:checked~#content1,
+        /* --- LOGIC: SHOW IMAGE WHEN CHECKED --- */
+        #gal1:checked~#content1,
         #gal2:checked~#content2,
         #gal3:checked~#content3,
         #gal4:checked~#content4,
         #gal5:checked~#content5,
         #gal6:checked~#content6,
-        #gal7:checked~#content7,
-        #gal8:checked~#content8,
-        #gal9:checked~#content9,
-        #gal10:checked~#content10,
-        #gal11:checked~#content11,
-        #gal12:checked~#content12,
-        #gal13:checked~#content13,
-        #gal14:checked~#content14,
-        #gal15:checked~#content15,
-        #gal16:checked~#content16,
-        #gal17:checked~#content17,
-        #gal18:checked~#content18,
-        #gal19:checked~#content19,
-        #gal20:checked~#content20 {
+        #gal7:checked~#content7 {
             display: inline-block;
         }
 
-        .product-more-views img {
-            max-height: 100%;
-            max-width: 100%;
+        /* --- LOGIC: RED BORDER ON ACTIVE IMAGE --- */
+        #gal1:checked~#content1 img,
+        #gal2:checked~#content2 img,
+        #gal3:checked~#content3 img,
+        #gal4:checked~#content4 img,
+        #gal5:checked~#content5 img,
+        #gal6:checked~#content6 img,
+        #gal7:checked~#content7 img {
+            border: 3px solid grey; /* The Red Border */
+            border-radius: 15px;
+            padding: 20px;          /* Space inside the border */
         }
 
-        /*description*/
+        /* --- THUMBNAILS CONTAINER (Single Row) --- */
+    .thumbnails-box {
+            display: flex;            /* Flexbox makes them sit in a row */
+            flex-wrap: nowrap;        /* Prevents wrapping to a new line */
+            justify-content: center;  /* Centers the row horizontally */
+            gap: 8px;                 /* Slightly tighter gap */
+            margin-top: 15px;
+            overflow-x: auto;         /* Allow scrolling on very small screens */
+        }
+
+        /* --- INDIVIDUAL THUMBNAIL LABELS --- */
+        .thumb-label {
+            cursor: pointer;
+            width: 12%;               /* Reduced from 14% */
+            max-width: 60px;          /* Reduced from 80px -> 60px */
+            aspect-ratio: 1 / 1;      /* Keeps them square */
+            border: 1px solid #ccc;   
+            display: flex;
+            align-items: center;      
+            justify-content: center;  
+            flex-shrink: 0;           
+        }
+
+        .thumb-label:hover {
+            border-color: #666;
+        }
+
+        .thumb-label img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        /* Highlight active thumbnail with red */
+        #gal1:checked ~ .thumbnails-box label[for="gal1"],
+        #gal2:checked ~ .thumbnails-box label[for="gal2"],
+        #gal3:checked ~ .thumbnails-box label[for="gal3"],
+        #gal4:checked ~ .thumbnails-box label[for="gal4"],
+        #gal5:checked ~ .thumbnails-box label[for="gal5"],
+        #gal6:checked ~ .thumbnails-box label[for="gal6"],
+        #gal7:checked ~ .thumbnails-box label[for="gal7"] {
+            border-color: grey; /* Red Border for Thumbnail */
+            opacity: 1;
+            border-radius: 2px;
+        }        /*description*/
         .title h1 {
             font-size: 20px;
             color: var(--primary-bg-color);

@@ -58,7 +58,7 @@ def get_ebay_images(item_id):
                         high_res = re.sub(r's-l\d+', 's-l1600', high_res)
                         image_urls.append(high_res)
                         
-        return image_urls
+        return image_urls[:7] # Limit to first 7 images
 
     except Exception as e:
         st.error(f"Error scraping images: {e}")
@@ -183,43 +183,24 @@ def merge_all_data(template_str, source_data_html, image_urls):
         if img_box:
             img_box.clear()
             
+            # 1. Inject Inputs and Main Images
             for i, url in enumerate(image_urls):
                 idx = i + 1
-                
-                # FIX: Pass 'name', 'type', and 'id' inside attrs={} dictionary
-                # This prevents collision with the function argument 'name'
-                inp_attrs = {
-                    "type": "radio", 
-                    "name": "gal", 
-                    "id": f"gal{idx}"
-                }
+                inp_attrs = {"type": "radio", "name": "gal", "id": f"gal{idx}"}
                 if i == 0:
                     inp_attrs["checked"] = ""
                 
                 inp = template.new_tag("input", attrs=inp_attrs)
                 img_box.append(inp)
                 
-                # Content Div
                 content_div = template.new_tag("div", attrs={"id": f"content{idx}", "class": "product-image-container"})
                 img_tag = template.new_tag("img", attrs={"src": url, "alt": f"Image {idx}"})
                 content_div.append(img_tag)
                 img_box.append(content_div)
 
-        # Thumbnails logic
-        thumb_box = None
-        gallery_div = template.find("div", class_="gallery")
-        if gallery_div:
-            for div in gallery_div.find_all("div"):
-                if div != img_box and (div.find("label") or "thumb" in (div.get("class") or [])):
-                    thumb_box = div
-                    break
+            # 2. Inject Thumbnails (NOW INSIDE img_box)
+            thumb_box = template.new_tag("div", attrs={"class": "thumbnails-box"})
             
-            if not thumb_box:
-                thumb_box = template.new_tag("div", attrs={"class": "thumbnails-box"})
-                gallery_div.append(thumb_box)
-        
-        if thumb_box:
-            thumb_box.clear()
             for i, url in enumerate(image_urls):
                 idx = i + 1
                 thumb_url = url.replace("s-l1600", "s-l140")
@@ -228,17 +209,17 @@ def merge_all_data(template_str, source_data_html, image_urls):
                 t_img = template.new_tag("img", attrs={"src": thumb_url, "alt": f"Thumb {idx}"})
                 label.append(t_img)
                 thumb_box.append(label)
+            
+            # Append thumbnails at the bottom of the main image box
+            img_box.append(thumb_box)
 
-    # --- B. TEXT DATA INJECTION ---
-
-    # 1. TITLE
+    # --- B. TEXT DATA INJECTION (Unchanged) ---
     title_tag = data.select_one(".title-name h2")
     if title_tag:
         template_title = template.select_one(".title h1")
         if template_title:
             template_title.string = title_tag.get_text(strip=True)
 
-    # 2. DESCRIPTION
     data_desc = data.select_one('.desc-box')
     template_desc = template.select_one('.middle-right .description-details')
     if data_desc and template_desc:
@@ -247,7 +228,6 @@ def merge_all_data(template_str, source_data_html, image_urls):
         for child in cleaned_children:
             template_desc.append(child)
 
-    # 3. SPEC TABLE
     data_table = data.select_one(".tableinfo table")
     template_table = template.select_one("table.table")
     if data_table and template_table:
@@ -262,10 +242,8 @@ def merge_all_data(template_str, source_data_html, image_urls):
             for elem in source_tbody.find_all("tr", recursive=False):
                 template_table.append(elem)
 
-    # 4. COMPATIBILITY
     table_details = data.select(".table-details")
     compat_section = table_details[-1] if table_details else None
-
     if compat_section:
         compat_target = None
         all_descs = template.find_all("div", class_="description")
@@ -274,7 +252,6 @@ def merge_all_data(template_str, source_data_html, image_urls):
             if heading and "Compatible with the following vehicles" in heading.text:
                 compat_target = desc
                 break
-
         if compat_target:
             details_target = compat_target.find("div", class_="description-details")
             if details_target:
@@ -283,7 +260,6 @@ def merge_all_data(template_str, source_data_html, image_urls):
                 details_target.append(compat_div)
 
     return html.unescape(str(template))
-
 # ==========================================
 # 4. STREAMLIT UI
 # ==========================================
