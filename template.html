@@ -11589,9 +11589,13 @@
 
         }
 
-        .main {
-            background: #FFFFFF;
-        }
+        .main { 
+            max-width: 1200px;       /* Max width */
+            width: 90%;              /* 96% width ensures 2% space on left/right on mobile */
+            margin: 0 auto;          /* Centers the box horizontally */
+            border-radius: 5px;      /* Optional: Rounded corners */
+            overflow: hidden;        /* Keeps inner content inside corners */
+        }       
 
         /*header*/
         .header {
@@ -11677,6 +11681,8 @@
         #gal5:checked~#content5 img,
         #gal6:checked~#content6 img,
         #gal7:checked~#content7 img {
+            height: auto;
+            width: 100%;
             border: 3px solid grey; /* The Red Border */
             border-radius: 15px;
             padding: 20px;          /* Space inside the border */
@@ -11727,7 +11733,7 @@
             border-radius: 2px;
         }        /*description*/
         .title h1 {
-            font-size: 20px;
+            font-size: 30px;
             color: var(--primary-bg-color);
             ;
             padding: 16px;
@@ -11786,6 +11792,8 @@ padding-right: 10px;
 
         .description-details p {
             margin-bottom: 10px;
+            font-weight: 400;
+            font-size: 20px;
         }
 
         .description-details ul {
@@ -11952,7 +11960,7 @@ padding-right: 10px;
                     <div class="description-heading">
                         <h4>Notes</h4>
                     </div>
-                    <div class="description-heading">
+                    <div class="description-heading" style="padding: 8px;">
                         <h5>&nbsp;Brand New in the Box - Fit and Quality Guaranteed!</h5>
                     </div>
                     <div class="description-details">
