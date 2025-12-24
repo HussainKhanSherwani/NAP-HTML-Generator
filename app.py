@@ -339,37 +339,20 @@ def merge_all_data(template_str, source_data_html, image_urls, mode="Xtreme"):
             
             img_box.append(thumb_box)
 
-    # --- D. TABLE INJECTION ---
-    template_table = template.select_one("table.table")
-    source_tbody = None
-
+    # --- B. TITLE INJECTION ---
+    source_title = None
     if mode == "Xtreme":
-        data_table = data.select_one(".tableinfo table")
-        if data_table: source_tbody = data_table.find("tbody") or data_table
+        title_tag = data.select_one(".title-name h2")
+        if title_tag: source_title = title_tag.get_text(strip=True)
     else: # Carparts
-        content_bottom = data.find(id="content__bottom")
-        if content_bottom:
-            data_table = content_bottom.find("table")
-            if data_table: 
-                source_tbody = data_table.find("tbody") or data_table
-                
-                # --- NEW LOGIC: Convert first TD to TH for Carparts ---
-                if source_tbody:
-                    for row in source_tbody.find_all("tr", recursive=False):
-                        first_td = row.find("td")
-                        if first_td:
-                            first_td.name = "th" # Convert tag from td -> th
+        title_tag = data.select_one(".eb_title")
+        if title_tag: source_title = title_tag.get_text(strip=True)
 
-    if template_table and source_tbody:
-        target_tbody = template_table.find("tbody")
-        if target_tbody:
-            target_tbody.clear()
-            for row in source_tbody.find_all("tr", recursive=False):
-                target_tbody.append(row)
-        else:
-            template_table.clear()
-            for elem in source_tbody.find_all("tr", recursive=False):
-                template_table.append(elem)
+    if source_title:
+        template_title = template.select_one(".title h1")
+        if template_title:
+            template_title.string = source_title
+
     # --- C. DESCRIPTION INJECTION ---
     template_desc = template.select_one('.middle-right .description-details')
     cleaned_children = []
