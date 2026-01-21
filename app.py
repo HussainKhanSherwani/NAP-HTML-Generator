@@ -305,7 +305,24 @@ def merge_all_data(template_str, source_data_html, image_urls, mode="Xtreme"):
     template = BeautifulSoup(template_str, "html.parser")
     data = BeautifulSoup(source_data_html, "html.parser")
 
-    # --- A. IMAGE INJECTION ---
+    # --- DEFINE YOUR STATIC LINKS HERE ---
+    # This HTML is exactly what you requested.
+    STATIC_LINKS_HTML = """
+    <div class="static-links" style="padding-bottom: 10px; font-weight: bold;">
+        <a href="https://www.ebay.com/str/hiveofdeals?_tab=about" target="_blank" 
+           style="font-size: 16px; font-weight: 300; color: var(--ef-blue-tint-100, #0053a0); text-decoration-line: underline; text-decoration-thickness: 0.8px; text-underline-offset: 5px;">
+           Terms of Use
+        </a>
+        <span style="margin: 10px 12px; font-size: 18px">|</span>
+        <a href="https://www.ebay.com/str/hiveofdeals?_tab=about" target="_blank" 
+           style="font-size: 16px; font-weight: 300; color: var(--ef-blue-tint-100, #0053a0); text-decoration-line: underline; text-decoration-thickness: 0.8px; text-underline-offset: 5px;">
+           Warranty Coverage Policy
+        </a>
+    </div>
+    """
+
+    # ... (Image Injection Logic - Unchanged) ...
+    # A. IMAGES
     if image_urls:
         img_box = template.find("div", class_="product-image-box")
         
@@ -364,13 +381,21 @@ def merge_all_data(template_str, source_data_html, image_urls, mode="Xtreme"):
     else: # Carparts
         # We pass the WHOLE soup to carparts logic because it needs to find #content__right
         cleaned_children = clean_description_carparts(data)
-            
-    if template_desc and cleaned_children:
-        template_desc.clear()
-        for child in cleaned_children:
-            template_desc.append(child)
+    
+    if template_desc:
+        template_desc.clear() # Clear existing placeholder text
+        
+        # 1. INJECT STATIC LINKS FIRST
+        links_soup = BeautifulSoup(STATIC_LINKS_HTML, "html.parser")
+        template_desc.append(links_soup)
+        
+        # 2. INJECT SCRAPED CONTENT SECOND
+        if cleaned_children:
+            for child in cleaned_children: 
+                template_desc.append(child)
 
-    # --- D. TABLE INJECTION ---
+    # ... (Table Injection Logic - Unchanged) ...
+    # D. TABLE
     template_table = template.select_one("table.table")
     source_tbody = None
 
