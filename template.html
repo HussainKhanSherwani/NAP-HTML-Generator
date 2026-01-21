@@ -11561,8 +11561,7 @@
         .h6,
         ul,
         li,
-        p,
-        a {
+        p{
             padding: 0px;
             margin: 0px;
             list-style: none;
@@ -11639,7 +11638,6 @@
             position: relative;
             border-radius: 20px;
             border: none;
-            padding: 10px;
         }
 
         /* Hide the radio inputs */
@@ -11654,8 +11652,10 @@
             width: 100%;
             position: relative;
             text-align: center;
+            border: 3px solid grey; /* The Red Border */
+            border-radius: 15px;
             margin: 0 auto;
-            padding: 10px;
+            padding: 3px;
             display: none; /* Hidden by default */
         }
 
@@ -11685,10 +11685,7 @@
         #gal6:checked~#content6 img,
         #gal7:checked~#content7 img {
             height: auto;
-            width: auto;
-            border: 3px solid grey; /* The Red Border */
-            border-radius: 15px;
-            padding: 20px;          /* Space inside the border */
+            width: 98%;         /* Space inside the border */
         }
 
         /* --- THUMBNAILS CONTAINER (Single Row) --- */
@@ -11914,7 +11911,7 @@ padding-right: 10px;
                 <div class="description">
                     <div class="middle-inside">
                         <div class="row">
-                            <div class="col-lg-6">
+                            <div class="col-lg-6" style="padding-left: 0;">
                                 <div class="gallery">
                                     <div class="product-image-box">
                                         <input type="radio" name="gal" id="gal1" checked="">
@@ -11963,6 +11960,10 @@ padding-right: 10px;
                 <div class="description">
                     <div class="description-heading">
                         <h4>Notes</h4>
+                    </div>
+                    <div class="description-details">
+                        <ul><li><p style="color: var(--red);">Some parts may be delivered in multiple shipments. You may receive some items earlier than others, but rest assured that all items will be delivered.</p></li></ul>
+                        
                     </div>
                     <div class="description-heading" style="padding: 8px;">
                         <h5>&nbsp;Brand New in the Box - Fit and Quality Guaranteed!</h5>
