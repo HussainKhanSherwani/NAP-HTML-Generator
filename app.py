@@ -10,6 +10,7 @@ import copy
 # 1. IMAGE SCRAPING LOGIC (Shared)
 # ==========================================
 
+@st.cache_data(show_spinner=False)
 def get_ebay_images(item_id):
     """ 
     Scrapes images from eBay using the NAP Item Number.
@@ -105,7 +106,7 @@ def clean_description_xtreme(data_desc_tag):
 
     return out_children
 
-# --- B. CARPARTS SPECIFIC CLEANER (UPDATED FROM TEST CODE) ---
+# --- B. CARPARTS SPECIFIC CLEANER (UNCHANGED) ---
 def clean_description_carparts(soup):
     """
     Refined logic for Carparts:
@@ -205,6 +206,155 @@ def clean_description_carparts(soup):
 
     return out_children
 
+# --- C. OUR STORE SPECIFIC LOGIC (UPDATED) ---
+
+def extract_specs_ourstore(soup):
+    """
+    Extracts structured data for the table.
+    Includes a HARDCODED fallback for Prop 65 if extraction fails.
+    """
+    specs = {}
+    
+    # --- 1. LIST BASED SPECS (Top of HTML) ---
+    list_mappings = {
+        "Part Link Number": "Part Link Number",
+        "OE / OEM Number": "OE / OEM Number",
+        "Parts Includes": "Components"
+    }
+
+    for p in soup.find_all(['p', 'span']):
+        text = p.get_text(strip=True)
+        matched_key = next((k for k in list_mappings if k in text), None)
+        
+        if matched_key:
+            header_node = p if p.name == 'p' else p.find_parent('p')
+            if not header_node: continue
+            
+            next_ul = header_node.find_next_sibling('ul')
+            if next_ul:
+                items = [li.get_text(" ", strip=True) for li in next_ul.find_all('li')]
+                val = ", ".join(items)
+                specs[list_mappings[matched_key]] = val
+
+    # --- 2. LINE BASED SPECS (Bottom of HTML) ---
+    target_keys = [
+        "Certification", "Anticipated Ship Out Time", "Quantity Sold", 
+        "Product Fit", "Replaces OE Number", "Finish", "Recommended Use", 
+        "Parts link Number", "Vehicle Body Type", "Color"
+    ]
+
+    for p in soup.find_all('p'):
+        text = p.get_text(" ", strip=True)
+        
+        # Check for Prop 65 (Dynamic Search)
+        if "P65Warnings.ca.gov" in text:
+            # Clean up the text if it has the header mashed in
+            clean_text = text.replace("Prop 65 WarningWARNING", "WARNING")
+            clean_text = clean_text.replace("Prop 65 Warning", "").strip()
+            if clean_text.startswith(":"): clean_text = clean_text[1:].strip()
+            
+            specs["Prop 65 Warning"] = clean_text
+            continue
+
+        if ":" in text:
+            parts = text.split(":", 1)
+            key = parts[0].strip()
+            val = parts[1].strip()
+            
+            if key in target_keys and val: 
+                specs[key] = val
+
+    # --- 3. HARDCODED FALLBACK ---
+    # If we didn't find the warning dynamically, force it in.
+    if "Prop 65 Warning" not in specs:
+        specs["Prop 65 Warning"] = "WARNING: This product can expose you to chemicals including Chromium, Lead and lead compounds, Nickel, which is known to the State of California to cause cancer and birth defects or other reproductive harm. For more information go to www.P65Warnings.ca.gov."
+
+    return specs
+
+def clean_description_ourstore(soup_input):
+    """
+    Parses 'Our Store' format using START/STOP markers.
+    START = 'Warranty Coverage Policy'
+    STOP  = Specs, Prop 65, or Compatibility headers.
+    """
+    soup = soup_input # Read-only access is fine
+    out_soup = BeautifulSoup("", "html.parser")
+    out_children = []
+    
+    # --- 1. FIND START MARKER ---
+    start_node = None
+    all_paragraphs = soup.find_all('p')
+    
+    for p in all_paragraphs:
+        if "Warranty Coverage Policy" in p.get_text():
+            start_node = p
+            break
+            
+    if not start_node:
+        # Fallback: Look for "Description :"
+        for p in all_paragraphs:
+            if "Description" in p.get_text() and len(p.get_text()) < 20:
+                start_node = p
+                break
+    
+    if not start_node: return []
+
+    # --- 2. COLLECT SIBLINGS UNTIL STOP MARKER ---
+    stop_keys = [
+        "Certification:", "Anticipated Ship Out Time:", "Quantity Sold:", 
+        "Product Fit:", "Replaces OE Number:", "Finish:", "Recommended Use:", 
+        "Parts link Number:", "Vehicle Body Type:", "Color:", 
+        "Compatible with the Following Vehicles", "Return & Replacement Policy",
+        "Prop 65 Warning", "P65Warnings.ca.gov" # <--- ADDED STOP KEYS
+    ]
+    
+    raw_nodes = []
+    
+    for sibling in start_node.next_siblings:
+        if sibling.name is None and not sibling.strip(): continue
+            
+        text = sibling.get_text(" ", strip=True)
+        if not text: continue
+        
+        # CHECK STOP CONDITION
+        if any(k in text for k in stop_keys):
+            break
+            
+        raw_nodes.append(sibling)
+
+    # --- 3. FORMAT OUTPUT ---
+    for elem in raw_nodes:
+        text = elem.get_text(" ", strip=True)
+        
+        is_heading = False
+        if hasattr(elem, 'find'):
+            span = elem.find("span", style=True)
+            if span:
+                style = span['style'].lower()
+                if "font-weight: 700" in style or "font-weight: bold" in style:
+                    is_heading = True
+                elif "font-size" in style:
+                    match = re.search(r'font-size:\s*(\d+)pt', style)
+                    if match and int(match.group(1)) >= 13:
+                        is_heading = True
+        
+        if is_heading:
+            h3 = out_soup.new_tag("h3")
+            h3.string = text
+            out_children.append(h3)
+        elif elem.name == 'ul':
+            new_ul = out_soup.new_tag("ul")
+            for li in elem.find_all('li'):
+                new_li = out_soup.new_tag("li")
+                new_li.string = li.get_text(" ", strip=True)
+                new_ul.append(new_li)
+            out_children.append(new_ul)
+        else:
+            p = out_soup.new_tag("p")
+            p.string = text
+            out_children.append(p)
+
+    return out_children
 # --- COMPATIBILITY EXTRACTORS ---
 
 def extract_compatibility_xtreme(compat_section, template):
@@ -213,16 +363,12 @@ def extract_compatibility_xtreme(compat_section, template):
 
     for child in compat_section.find_all(recursive=False):
         text = child.get_text(" ", strip=True)
-        if not text:
-            continue
+        if not text: continue
 
         is_brand = False
-        if child.name == "h6" and not child.find(True):
-            is_brand = True
-        elif (child.name == "div" and child.find("font") and child.find("span") and child.find("b")):
-            is_brand = True
-        elif len(text) < 12:
-            is_brand = True
+        if child.name == "h6" and not child.find(True): is_brand = True
+        elif (child.name == "div" and child.find("font") and child.find("span") and child.find("b")): is_brand = True
+        elif len(text) < 12: is_brand = True
 
         if is_brand:
             p = template.new_tag("p")
@@ -244,10 +390,8 @@ def extract_compatibility_xtreme(compat_section, template):
 
 def extract_compatibility_carparts(soup, template):
     inner_div = template.new_tag("div")
-    
     container = soup.find("div", class_="item__list")
-    if not container:
-        return None
+    if not container: return None
 
     for content_block in container.find_all("div", class_="items__list--content"):
         brand_p = content_block.find("p")
@@ -269,6 +413,52 @@ def extract_compatibility_carparts(soup, template):
             
     return inner_div
 
+def extract_compatibility_ourstore(soup, template):
+    """
+    Extracts 'Compatible with the Following Vehicles' section for Our Store format.
+    """
+    inner_div = template.new_tag("div")
+    start_node = None
+    for p in soup.find_all("p"):
+        if "Compatible with the Following Vehicles" in p.get_text():
+            start_node = p
+            break
+    if not start_node: return None
+
+    current_ul = None
+    for sibling in start_node.next_siblings:
+        if sibling.name is None: continue 
+        text = sibling.get_text(" ", strip=True)
+        if not text: continue
+        if "Return & Replacement Policy" in text: break
+        
+        # Check Brand Header (e.g. inside <li ... font-size: 13pt ...>Dodge:</li>)
+        is_brand = False
+        if sibling.name == 'ul':
+             first_li = sibling.find("li")
+             if first_li and "font-size: 13pt" in str(first_li):
+                 is_brand = True
+                 text = first_li.get_text(" ", strip=True).replace(":", "")
+
+        if is_brand:
+            p = template.new_tag("p")
+            strong = template.new_tag("strong")
+            strong.string = text
+            p.append(strong)
+            inner_div.append(p)
+            current_ul = template.new_tag("ul")
+            inner_div.append(current_ul)
+        else:
+            if current_ul is None:
+                current_ul = template.new_tag("ul")
+                inner_div.append(current_ul)
+            li = template.new_tag("li")
+            li.string = text
+            current_ul.append(li)
+            
+    return inner_div
+
+@st.cache_data(show_spinner=False)
 def fetch_iframe_html(product_url):
     headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -283,7 +473,6 @@ def fetch_iframe_html(product_url):
         resp = requests.get(product_url, headers=headers)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
-        
         iframe = soup.find("iframe", id="desc_ifr")
         if iframe and iframe.get("src"):
             iframe_src = iframe.get("src")
@@ -305,8 +494,7 @@ def merge_all_data(template_str, source_data_html, image_urls, mode="Xtreme"):
     template = BeautifulSoup(template_str, "html.parser")
     data = BeautifulSoup(source_data_html, "html.parser")
 
-    # --- DEFINE YOUR STATIC LINKS HERE ---
-    # This HTML is exactly what you requested.
+    # --- STATIC LINKS ---
     STATIC_LINKS_HTML = """
     <div class="static-links" style="padding-bottom: 10px; font-weight: bold;">
         <a href="https://www.ebay.com/str/hiveofdeals?_tab=about" target="_blank" 
@@ -321,14 +509,11 @@ def merge_all_data(template_str, source_data_html, image_urls, mode="Xtreme"):
     </div>
     """
 
-    # ... (Image Injection Logic - Unchanged) ...
-    # A. IMAGES
+    # --- A. IMAGES ---
     if image_urls:
         img_box = template.find("div", class_="product-image-box")
-        
         if img_box:
             img_box.clear()
-            
             for i, url in enumerate(image_urls):
                 idx = i + 1
                 inp_attrs = {"type": "radio", "name": "gal", "id": f"gal{idx}"}
@@ -337,94 +522,112 @@ def merge_all_data(template_str, source_data_html, image_urls, mode="Xtreme"):
                 
                 inp = template.new_tag("input", attrs=inp_attrs)
                 img_box.append(inp)
-                
                 content_div = template.new_tag("div", attrs={"id": f"content{idx}", "class": "product-image-container"})
                 img_tag = template.new_tag("img", attrs={"src": url, "alt": f"Image {idx}"})
                 content_div.append(img_tag)
                 img_box.append(content_div)
 
             thumb_box = template.new_tag("div", attrs={"class": "thumbnails-box"})
-            
             for i, url in enumerate(image_urls):
                 idx = i + 1
                 thumb_url = url.replace("s-l1600", "s-l140")
-                
                 label = template.new_tag("label", attrs={"for": f"gal{idx}", "class": "thumb-label"})
                 t_img = template.new_tag("img", attrs={"src": thumb_url, "alt": f"Thumb {idx}"})
                 label.append(t_img)
                 thumb_box.append(label)
-            
             img_box.append(thumb_box)
 
-    # --- B. TITLE INJECTION ---
+    # --- B. TITLE ---
     source_title = None
     if mode == "Xtreme":
         title_tag = data.select_one(".title-name h2")
         if title_tag: source_title = title_tag.get_text(strip=True)
-    else: # Carparts
+    elif mode == "Carparts":
         title_tag = data.select_one(".eb_title")
+        if title_tag: source_title = title_tag.get_text(strip=True)
+    elif mode == "Our Store":
+        title_tag = data.find("span", style=lambda v: v and "font-size: 28pt" in v)
         if title_tag: source_title = title_tag.get_text(strip=True)
 
     if source_title:
         template_title = template.select_one(".title h1")
-        if template_title:
-            template_title.string = source_title
+        if template_title: template_title.string = source_title
 
-    # --- C. DESCRIPTION INJECTION ---
+    # --- C. DESCRIPTION ---
     template_desc = template.select_one('.middle-right .description-details')
     cleaned_children = []
 
     if mode == "Xtreme":
         data_desc = data.select_one('.desc-box')
-        if data_desc:
-            cleaned_children = clean_description_xtreme(data_desc)
-    else: # Carparts
-        # We pass the WHOLE soup to carparts logic because it needs to find #content__right
+        if data_desc: cleaned_children = clean_description_xtreme(data_desc)
+    elif mode == "Carparts":
         cleaned_children = clean_description_carparts(data)
+    elif mode == "Our Store":
+        cleaned_children = clean_description_ourstore(data)
     
     if template_desc:
-        template_desc.clear() # Clear existing placeholder text
-        
-        # 1. INJECT STATIC LINKS FIRST
+        template_desc.clear()
         links_soup = BeautifulSoup(STATIC_LINKS_HTML, "html.parser")
         template_desc.append(links_soup)
-        
-        # 2. INJECT SCRAPED CONTENT SECOND
         if cleaned_children:
             for child in cleaned_children: 
                 template_desc.append(child)
 
-    # ... (Table Injection Logic - Unchanged) ...
-    # D. TABLE
+    # --- D. TABLE (UPDATED) ---
     template_table = template.select_one("table.table")
     source_tbody = None
-
+    
+    # 1. Fetch Existing Table Data based on mode
     if mode == "Xtreme":
         data_table = data.select_one(".tableinfo table")
         if data_table: source_tbody = data_table.find("tbody") or data_table
-    else: # Carparts
+    elif mode == "Carparts":
         content_bottom = data.find(id="content__bottom")
         if content_bottom:
             data_table = content_bottom.find("table")
             if data_table: source_tbody = data_table.find("tbody") or data_table
+    
+    # 2. Extract Specifics for Our Store (Not in table format in source)
+    our_store_specs = {}
+    if mode == "Our Store":
+        our_store_specs = extract_specs_ourstore(data)
 
-    if template_table and source_tbody:
+    if template_table:
         target_tbody = template_table.find("tbody")
-        if target_tbody:
-            target_tbody.clear()
+        if not target_tbody:
+            target_tbody = template.new_tag("tbody")
+            template_table.append(target_tbody)
+        else:
+            target_tbody.clear() # Clear placeholder data from template
+
+        # Case 1: Source has a table (Xtreme/Carparts)
+        if source_tbody:
             for row in source_tbody.find_all("tr", recursive=False):
                 target_tbody.append(row)
-        else:
-            template_table.clear()
-            for elem in source_tbody.find_all("tr", recursive=False):
-                template_table.append(elem)
+        
+        # Case 2: Our Store (Inject extracted specs as rows)
+        if mode == "Our Store" and our_store_specs:
+            for key, val in our_store_specs.items():
+                tr = template.new_tag("tr")
+                
+                td_key = template.new_tag("td")
+                strong = template.new_tag("strong")
+                strong.string = key
+                td_key.append(strong)
+                
+                td_val = template.new_tag("td")
+                td_val.string = val
+                
+                tr.append(td_key)
+                tr.append(td_val)
+                target_tbody.append(tr)
 
-    # --- E. COMPATIBILITY INJECTION ---
+    # --- E. COMPATIBILITY ---
     compat_target = None
     all_descs = template.find_all("div", class_="description")
     for desc in all_descs:
         heading = desc.find("h4")
-        if heading and "Compatible with the following vehicles" in heading.text:
+        if heading and "Compatible with" in heading.text:
             compat_target = desc
             break
     
@@ -432,15 +635,13 @@ def merge_all_data(template_str, source_data_html, image_urls, mode="Xtreme"):
         details_target = compat_target.find("div", class_="description-details")
         if details_target:
             compat_div = None
-            
             if mode == "Xtreme":
                 table_details = data.select(".table-details")
-                compat_section = table_details[-1] if table_details else None
-                if compat_section:
-                    compat_div = extract_compatibility_xtreme(compat_section, template)
-            
-            else: # Carparts
+                if table_details: compat_div = extract_compatibility_xtreme(table_details[-1], template)
+            elif mode == "Carparts":
                 compat_div = extract_compatibility_carparts(data, template)
+            elif mode == "Our Store":
+                compat_div = extract_compatibility_ourstore(data, template)
 
             if compat_div:
                 details_target.clear()
@@ -457,7 +658,7 @@ st.title("🛍️ eBay to HTML Template Generator")
 
 st.sidebar.header("Configuration")
 
-mode = st.sidebar.radio("Select Processing Mode:", ["Xtreme", "Carparts"], 
+mode = st.sidebar.radio("Select Processing Mode:", ["Xtreme", "Carparts", "Our Store"], 
                         help="Select the source format to apply correct extraction logic.")
 
 template_content = ""
