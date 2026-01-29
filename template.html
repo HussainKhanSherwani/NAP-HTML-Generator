@@ -169,7 +169,7 @@
 
         a {
             color: #007bff;
-            text-decoration: none;
+            font-weight: 100;
             background-color: transparent
         }
 
@@ -11685,7 +11685,7 @@
         #gal6:checked~#content6 img,
         #gal7:checked~#content7 img {
             height: auto;
-            width: 98%;         /* Space inside the border */
+            width: auto;         /* Space inside the border */
         }
 
         /* --- THUMBNAILS CONTAINER (Single Row) --- */
@@ -11768,13 +11768,40 @@
 
         }
 
+        /* --- Compatibility List Layout --- */
+        .compat-grid {
+            column-count: 2;       /* Splits the list into 3 columns */
+            column-gap: 40px;      /* Adds space between the columns */
+            width: 100%;           /* Ensures it uses the full page width */
+        }
+
+        /* Ensure headers stay with their lists */
+        .compat-grid p {
+            break-after: avoid; 
+            margin-bottom: 5px;
+            font-size: 1.1em;      /* Make Brand Names slightly larger */
+            color: #333;
+            border-bottom: 2px solid #eee; /* Optional: Nice underline for brands */
+        }
+
+        .compat-grid ul {
+            margin-top: 0;
+            margin-bottom: 20px;
+            break-inside: avoid;   /* Prevents a single list from splitting weirdly */
+        }
+        .compat-grid ul li {
+            padding:10px;
+            font-size: 15px;
+            list-style: disc;
+        }
+
         .description-details h1,
         .description-details h2,
         .description-details h3,
         .description-details h4,
         .description-details h5,
         .description-details h6 {
-            font-size: 23px;
+            font-size: 20px;
             color: #D8490F;
             padding: 8px 0;
             font-weight: bold;
@@ -11792,8 +11819,7 @@ padding-right: 10px;
 
         .description-details p {
             margin-bottom: 10px;
-            font-weight: 400;
-            font-size: 20px;
+            font-size: 15px;
         }
 
         .description-details ul {
@@ -11801,9 +11827,10 @@ padding-right: 10px;
         }
 
         .description-details ul li {
-            padding:12px;
+            font-size: 15px;
             list-style: disc;
         }
+        
 
 
         /*Tabs*/
@@ -11962,11 +11989,8 @@ padding-right: 10px;
                         <h4>Notes</h4>
                     </div>
                     <div class="description-details">
-                        <ul><li><p style="color: var(--red);">Some parts may be delivered in multiple shipments. You may receive some items earlier than others, but rest assured that all items will be delivered.</p></li></ul>
-                        
-                    </div>
-                    <div class="description-heading" style="padding: 8px;">
-                        <h5>&nbsp;Brand New in the Box - Fit and Quality Guaranteed!</h5>
+                        <p style="color: var(--red);">Some parts may be delivered in multiple shipments. You may receive some items earlier than others, but rest assured that all items will be delivered.</p>
+                        <p>A Brand New in the Box - Fit and Quality Guaranteed!</p>
                     </div>
                     <div class="description-details">
                         <div class="table-responsive">
@@ -12031,7 +12055,7 @@ padding-right: 10px;
                     <div class="description-heading">
                         <h4>Compatible with the following vehicles</h4>
                     </div>
-                    <div class="description-details">
+                    <div class="description-details-1">
                         <div>
                             <p><strong>Jeep</strong></p>
                             <ul>
