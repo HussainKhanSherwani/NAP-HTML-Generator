@@ -13,19 +13,35 @@ import copy
 def fetch_url_standard(url):
     """
     Standard fetcher with explicit UTF-8 encoding handling.
+    Uses scrape.do if SCRAPE_DO_TOKEN is present in st.secrets.
     """
     try:
         if not isinstance(url, str): url = str(url)
-        headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Referer": "https://www.google.com/",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
-        }
-        response = requests.get(url.strip(), headers=headers, timeout=15)
+        url = url.strip()
+
+        scrape_do_token = None
+        try:
+            if "SCRAPE_DO_TOKEN" in st.secrets:
+                scrape_do_token = st.secrets["SCRAPE_DO_TOKEN"]
+        except Exception:
+            pass
+
+        if scrape_do_token:
+            target_url = "http://api.scrape.do"
+            params = {"token": scrape_do_token, "url": url}
+            response = requests.get(target_url, params=params, timeout=30)
+        else:
+            headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Referer": "https://www.google.com/",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1"
+            }
+            response = requests.get(url, headers=headers, timeout=15)
+            
         if response.status_code == 200:
             response.encoding = "utf-8" 
             return response.text
